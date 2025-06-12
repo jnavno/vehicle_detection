@@ -1,0 +1,26 @@
+.
+├── .gitignore
+├── LICENSE
+├── platformio.ini
+├── project_structure.txt
+├── README.md
+├── src
+│   └── main.cpp
+├── .trunk
+│   ├── actions -> /home/anda/.cache/trunk/repos/299e6d57874aee4bc9322512cbfc9e0a/actions
+│   ├── configs
+│   │   └── .markdownlint.yaml
+│   ├── .gitignore
+│   ├── logs -> /home/anda/.cache/trunk/repos/299e6d57874aee4bc9322512cbfc9e0a/logs
+│   ├── notifications -> /home/anda/.cache/trunk/repos/299e6d57874aee4bc9322512cbfc9e0a/notifications
+│   ├── out -> /home/anda/.cache/trunk/repos/299e6d57874aee4bc9322512cbfc9e0a/out
+│   ├── plugins
+│   │   └── trunk -> /home/anda/.cache/trunk/plugins/https---github-com-trunk-io-plugins/v1.7.0-4ebadccd80b22638
+│   ├── tools -> /home/anda/.cache/trunk/repos/299e6d57874aee4bc9322512cbfc9e0a/tools
+│   └── trunk.yaml
+└── .vscode
+    ├── c_cpp_properties.json
+    ├── extensions.json
+    └── launch.json
+
+12 directories, 12 files
