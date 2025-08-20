@@ -6,14 +6,14 @@ Building with a modular C++ structure using PlatformIO.
 
 ---
 
-## ✨ Features
+## Features
 - Solar powered detection Node
 - Detects vehicles passing over a buried sensor on the dirt path, at least 40cm under.
 - Meshtastic-compatible alarm messaging
 
 ---
 
-## 🛠 Hardware SHOPPING
+## Hardware SHOPPING
 
 ### Core Board
 - **[ESP32-S3 Heltec WiFi LoRa 32 V3](https://www.amazon.es/-/en/Fangxuee-Heltec-Meshtastic-LoRa32-863-928MHZ/dp/B0DTHZ8CVF/)**  
@@ -44,7 +44,7 @@ Building with a modular C++ structure using PlatformIO.
 
 ---
 
-## 🔌 Wiring Notes
+## Wiring Notes
 
 - **ESP32-S3 Heltec WiFi LoRa 32 V3**  
   - Has **Vext (3.3V)** output controlled by GPIO36, which is great for powering the external sensors and save energy during deep sleep.  
@@ -63,7 +63,7 @@ Building with a modular C++ structure using PlatformIO.
 
 ---
 
-## 📡 Detection Logic (DRAFT)
+## Detection Logic (DRAFT)
 
 - Sample magnetometer once per second  
 - Compare current azimuth against a smoothed average  
@@ -71,4 +71,4 @@ Building with a modular C++ structure using PlatformIO.
 - On trigger:  
   ```cpp
   MeshtasticDevice.sendText("Vehicle detected at...");
-
+  ```
