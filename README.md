@@ -1,53 +1,74 @@
 # Vehicle Detection
 
-ESP32-based vehicle detection system using the QMC5883L magnetometer. Designed to detect magnetic disturbances (vehicles) and send alerts over Meshtastic LoRa mesh. Modular C++ structure using PlatformIO.
+An ESP32-based vehicle detection system using I2C magnetometers.  
+Designed to detect magnetic disturbances (vehicles) and send alerts over a Meshtastic LoRa mesh.  
+Building with a modular C++ structure using PlatformIO.
 
-## Features
+---
 
-Europe:
-**[ESP32-S3 Heltec WiFi LoRa 32 V3](https://www.amazon.es/-/en/Fangxuee-Heltec-Meshtastic-LoRa32-863-928MHZ/dp/B0DTHZ8CVF/ref=sr_1_2?crid=MVLM5671HX8I&dib=eyJ2IjoiMSJ9.nje33bFH0ZrnNsVPglKwJJ5LXJJCCCkm9hLy5Ymdsal0aqW7maEbIXSYaxIISYZkmGVrwXnR9H4bUjLGRYhEPoPEY0NSaJqF3BC4z52oBvG8uE409-BP-4BDdWzB0CekjDiDY6CW8Czj3t-0F1JxJAZq0Jt-ZiCmTSzqpBOt2pRYS8W14WvNeiF3vv8plI3QYhkJUmgpQGkwrwqaObwd1Rwb_jDEgCUlXYCT4fr3BI4ES2eDo7s-_lKhZUo_GGKaOV0dNj_TCpzGDOG60hqJyVffCC-Ji9pnnfMd5ZFutjw.8VoTQWg_or2dymqRCSLk4o4hpTMBjKRoT7bCZJNT0-I&dib_tag=se&keywords=ESP32-S3+Heltec+WiFi+LoRa+32+V3&qid=1755363013&sprefix=esp32-s3+heltec+wifi+lora+32+v3%2Caps%2C285&sr=8-2)**
-
-
-
-Australia:
-Option1:
-**[MMC5603](https://littlebirdelectronics.com.au/products/adafruit-triple-axis-magnetometer-mmc5603?_pos=1&_sid=301f87019&_ss=r)**
-Option 2:
-**[MLX90393](https://littlebirdelectronics.com.au/products/adafruit-wide-range-triple-axis-magnetometer-mlx90393?_pos=1&_sid=c0fe86ecc&_ss=r)**
-
-Europe:
-**[MMC5603](https://www.amazon.es/-/en/dp/B0F99P53SB/ref=sr_1_1?crid=QQG4R9B2NWEB&dib=eyJ2IjoiMSJ9.Vnw-VOezcMEqnNAVGDgnHQ.BytMddSIGMFqXp1WcGHyoP5Mwe-VVLRjPvo9zcxvJec&dib_tag=se&keywords=MMC5603&qid=1755362765&sprefix=mmc5603%2Caps%2C261&sr=8-1)**
-
-**[MLX90393](https://www.amazon.es/-/en/dp/B0F99P53SB/ref=sr_1_1?crid=1UC062GLW7I4M&dib=eyJ2IjoiMSJ9.Vnw-VOezcMEqnNAVGDgnHQ.BytMddSIGMFqXp1WcGHyoP5Mwe-VVLRjPvo9zcxvJec&dib_tag=se&keywords=MMC5603&qid=1755362700&sprefix=%2Caps%2C880&sr=8-1)**
-
-I2C transducer (for long distance, I2C-based sensor connectivity)
-https://littlebirdelectronics.com.au/products/sparkfun-qwiicbus-kit?_pos=3&_sid=89eb868b5&_ss=r
-
-- **[MAX17048G+T10](https://www.mouser.com/datasheet/2/609/MAX17048_MAX17049-3469099.pdf)**: Micropower current lithium battery gauge with ±7.5mV precision.
-- Modular C++ codebase
+## ✨ Features
+- Solar powered detection Node
+- Detects vehicles passing over a buried sensor on the dirt path, at least 40cm under.
 - Meshtastic-compatible alarm messaging
 
-## Hardware
+---
 
-| Component                        | ESP32 Pin   |
-|----------------------------------|-------------|
-| QMC5883L SDA                     | GPIO 41     |
-| QMC5883L SCL                     | GPIO 42     |
-| QMC5883L VCC                     | Vext (3.3V) |
-| QMC5883L GND                     | GND         |
-| Optional: MAX17048 SDA/SCL      | 41 / 42     |
+## 🛠 Hardware SHOPPING
 
-## Wiring Notes
+### Core Board
+- **[ESP32-S3 Heltec WiFi LoRa 32 V3](https://www.amazon.es/-/en/Fangxuee-Heltec-Meshtastic-LoRa32-863-928MHZ/dp/B0DTHZ8CVF/)**  
 
-- QMC5883L uses I2C address `0x0D`
-- Vext (GPIO36-controlled) powers the sensor
-- SDA/SCL must be defined as GPIO 41/42 on Heltec V3
+### Magnetometers
+- **Australia**
+  - [MMC5603](https://littlebirdelectronics.com.au/products/adafruit-triple-axis-magnetometer-mmc5603)  
+  - [MLX90393](https://littlebirdelectronics.com.au/products/adafruit-wide-range-triple-axis-magnetometer-mlx90393)  
 
+- **Europe**
+  - [MMC5603](https://www.amazon.es/-/en/dp/B0F99P53SB)  
+  - [MLX90393](https://www.amazon.es/-/en/dp/B0F99P53SB)  
 
-## Detection Logic
+### I2C Extension
+- [SparkFun QwiicBus Kit](https://littlebirdelectronics.com.au/products/sparkfun-qwiicbus-kit)  
+(For long-distance I2C sensor connectivity)
 
-- Reads magnetometer every second
-- Compares current azimuth vs smoothed average
-- If deviation > threshold (e.g. 2.5°), triggers event
-- Sends `MeshtasticDevice.sendText("Vehicle detected at...")`
-- Uses cooldown to avoid spam
+### Optional
+- **[MAX17048G+T10](https://www.mouser.com/datasheet/2/609/MAX17048_MAX17049-3469099.pdf)**  
+  Micropower lithium battery gauge with ±7.5 mV precision.
+
+### Solar panel
+- **[Soshine Mini Solar Panel](https://www.amazon.com/gp/product/B099RSLNZ4/ref=ox_sc_rp_title_rp_4?smid=&pf_rd_p=5d865192-d391-4c21-b512-33ef668eaf70&pf_rd_r=ZD34D17Q1Y9YK24T2YJF&pd_rd_wg=ZZ4WH&pd_rd_i=B099RSLNZ4&pd_rd_w=qxl9E&content-id=amzn1.sym.5d865192-d391-4c21-b512-33ef668eaf70&pd_rd_r=34bb9ed1-854c-4531-a427-4dfd883824a8&th=1)**
+  USB Solar Panel Charger 5v 6w.
+
+### Battery pack
+- **[3.7V 4400mAh ICR18650](https://www.amazon.com/Coonyard-ICR18650-Rechargeable-Electronics-Equipment/dp/B0BJKFJ227/ref=sr_1_2_sspa?crid=1Y3TGZSPH0CLH&dib=eyJ2IjoiMSJ9.n97eN3WSFAfckpNQOrRRglA0sQHbViHLMtRlAhp8RxC11dZAUCuWR3ziV-ZXb-54bbs8kOv-UI626IEuJQupILSqPdCm95ZorcwXnY_NnJai6oZnf6lWl-MHITtGJwjBcy_E_k7vgJQWUJiZiW87cbXNxgVX-CjlX_d8Jyn4qYHhpud7R2UZHiDAOvbCJ7ucZzxqx-Dd4SzTirNugyzjOlAzNNVUUBnLsdQXRNk6oAdjyi0wZGtcD_Qd7fQkSwEvmphmDnEWJWpsVP6Fi1y6rIAluU8jn4C5pyXbs5YH9mA.Jmv02-Eyv-_iGgH7XSgxcg3Jj9E1dHRRPSx0lIPCaYg&dib_tag=se&keywords=lithium+battery+pack+18650&qid=1755726874&sprefix=lithium+battery+pack+18650%2Caps%2C228&sr=8-2-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1)**
+
+---
+
+## 🔌 Wiring Notes
+
+- **ESP32-S3 Heltec WiFi LoRa 32 V3**  
+  - Has **Vext (3.3V)** output controlled by GPIO36, which is great for powering the external sensors and save energy during deep sleep.  
+
+- **MMC5603**  
+  - Has **high resolution (0.0625 mG/LSB)** but requires careful initialization since readings can fluctuate without proper set/reset cycles.  
+
+- **MLX90393**  
+  - Very flexible with multiple operating modes and ranges, but can draw more current than the MMC5603 if left continuously active, must put to sleep before esp goes to sleep.  
+
+- **SparkFun QwiicBus Kit**  
+  - Allows **long-distance I2C** over twisted pair cable (ethernet cable), but both ends need a transceiver board. Voltage-level must match (either 3.3V or 5V).  
+
+- **MAX17048G+T10 (optional)**  
+  - Easy to use (no sense resistor needed). Accuracy improves after **several charge/discharge cycles** for learning the battery profile. Much better precision than on board heltec. 
+
+---
+
+## 📡 Detection Logic (DRAFT)
+
+- Sample magnetometer once per second  
+- Compare current azimuth against a smoothed average  
+- If deviation > threshold (e.g. **2.5°**) → trigger event  
+- On trigger:  
+  ```cpp
+  MeshtasticDevice.sendText("Vehicle detected at...");
+
