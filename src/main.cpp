@@ -1,50 +1,56 @@
 #include <Arduino.h>
-#include <QMC5883LCompass.h>
+#include "config.h"
+#include "sensor_mlx90393.h"
+#include "detector.h"
+#include "forwarder.h"
 
-QMC5883LCompass compass;
+MLX90393Sensor sensor;
+VehicleDetector detector;
 
-// Optionally track previous heading
-int lastAzimuth = -1;
+static uint32_t lastBenchMs = 0;
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  // For USB CDC on ESP32-S3, this helps when tethered. Remove if you run headless.
+  while (!Serial) { delay(10); }
 
-  // Initialize compass
-  compass.init();
+  Serial.println(F("\nMLX90393 Vehicle-Detect (Heltec V3)"));
+  Serial.println(F("Init sensor..."));
+  if (!sensor.begin()) {
+    Serial.println(F("ERROR: MLX90393 not found (check wiring, address, power)."));
+    while (1) delay(10);
+  }
+  Serial.println(F("Sensor OK. Starting..."));
 
-  // Optional: apply calibration data (replace with your own if available)
-  // compass.setCalibration(Xmin, Xmax, Ymin, Ymax, Zmin, Zmax);
-
-  // Optional: set smoothing with advanced filtering
-  compass.setSmoothing(10, true);
-
-  // Optional: set I2C address (if using non-default)
-  // compass.setADDR(0x0D);
-
-  Serial.println("QMC5883L Compass initialized.");
+  Forward::begin();
 }
 
 void loop() {
-  compass.read();
+  float mag;
+  if (!sensor.readMagnitude(mag)) {
+    Serial.println(F("read fail"));
+    delay(SAMPLE_PERIOD_MS);
+    return;
+  }
 
-  int x = compass.getX();
-  int y = compass.getY();
-  int z = compass.getZ();
-  int azimuth = compass.getAzimuth();
-  byte bearing = compass.getBearing(azimuth);
+  uint32_t now = millis();
+  DetectEvent ev = detector.update(mag, now);
 
-  char direction[3];
-  compass.getDirection(direction, azimuth);
+  const auto& st = detector.state();
+  float delta_uT = (isnan(st.baseline_uT)) ? NAN : fabsf(mag - st.baseline_uT);
 
-  Serial.printf("📡 X: %d Y: %d Z: %d | Azimuth: %d° | Bearing: %d | Dir: %c%c%c\n",
-                x, y, z, azimuth, bearing,
-                direction[0], direction[1], direction[2]);
+  // status / event reporting
+  if (ev == DetectEvent::Calibrating) {
+    // quiet during calibration, but you could blink an LED here if desired
+  } else if (ev != DetectEvent::None) {
+    Forward::sendEvent(ev, mag, delta_uT, st.baseline_uT, st.dynThresh_uT, now);
+  }
 
-  // You can now add logic like:
-  // if (abs(azimuth - lastAzimuth) > threshold) triggerMeshtastic();
+  // periodic benchmark line
+  if (now - lastBenchMs > DEBUG_BENCH_PERIOD_MS && !isnan(delta_uT)) {
+    Forward::sendLine(detector.bench(mag, delta_uT));
+    lastBenchMs = now;
+  }
 
-  lastAzimuth = azimuth;
-
-  delay(1000);
+  delay(SAMPLE_PERIOD_MS);
 }
