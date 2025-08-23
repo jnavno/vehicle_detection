@@ -9,7 +9,7 @@ Building with a modular C++ structure using PlatformIO.
 ## Features
 - Solar powered detection Node
 - Detects vehicles passing over a buried sensor on the dirt path, at least 40cm under.
-- Meshtastic-compatible alarm messaging
+- Meshtastic-compatible alarm messaging (sends signal over I2C wire into existing Meshtastic node)
 
 ---
 
@@ -17,6 +17,7 @@ Building with a modular C++ structure using PlatformIO.
 
 ### Core Board
 - **[ESP32-S3 Heltec WiFi LoRa 32 V3](https://www.amazon.es/-/en/Fangxuee-Heltec-Meshtastic-LoRa32-863-928MHZ/dp/B0DTHZ8CVF/)**  
+- **[XIAO nRF52840 & Wio-SX1262 Kit for Meshtastic](https://core-electronics.com.au/xiao-esp32s3-meshtastic-lora-wio-sx1262-wireless-communication-device.html)**
 
 ### Magnetometers
 - **Australia**
@@ -24,11 +25,11 @@ Building with a modular C++ structure using PlatformIO.
   - [MLX90393](https://littlebirdelectronics.com.au/products/adafruit-wide-range-triple-axis-magnetometer-mlx90393)  
 
 - **Europe**
-  - [MMC5603](https://www.amazon.es/-/en/dp/B0F99P53SB)  
-  - [MLX90393](https://www.amazon.es/-/en/dp/B0F99P53SB)  
+  - [MMC5603](https://es.aliexpress.com/item/1005008923222064.html?spm=a2g0o.detail.0.0.5dd4Rl9jRl9j1I&mp=1&pdp_npi=5%40dis%21EUR%21EUR%204.09%21EUR%204.09%21%21EUR%204.09%21%21%21%402103205217559088707808148e3dd2%2112000047218838031%21ct%21ES%212759432007%21%211%210&gatewayAdapt=glo2esp)
+  - [MLX90393](https://es.aliexpress.com/item/1005009594077249.html?spm=a2g0o.detail.0.0.1bf3C05dC05d5Z&mp=1&pdp_npi=5%40dis%21EUR%21EUR%206.17%21EUR%203.89%21%21EUR%203.89%21%21%21%402103205217559088177796853e3dd2%2112000049565358424%21ct%21ES%212759432007%21%211%210&gatewayAdapt=glo2esp)
 
 ### I2C Extension
-- [SparkFun QwiicBus Kit](https://littlebirdelectronics.com.au/products/sparkfun-qwiicbus-kit)  
+- [SparkFun QwiicBus Kit](https://core-electronics.com.au/sparkfun-qwiicbus-endpoint.html)
 (For long-distance I2C sensor connectivity)
 
 ### Optional
@@ -40,9 +41,14 @@ Building with a modular C++ structure using PlatformIO.
   USB Solar Panel Charger 5v 6w.
 
 ### Battery pack
-- **[3.7V 4400mAh ICR18650](https://www.amazon.com/Coonyard-ICR18650-Rechargeable-Electronics-Equipment/dp/B0BJKFJ227/ref=sr_1_2_sspa?crid=1Y3TGZSPH0CLH&dib=eyJ2IjoiMSJ9.n97eN3WSFAfckpNQOrRRglA0sQHbViHLMtRlAhp8RxC11dZAUCuWR3ziV-ZXb-54bbs8kOv-UI626IEuJQupILSqPdCm95ZorcwXnY_NnJai6oZnf6lWl-MHITtGJwjBcy_E_k7vgJQWUJiZiW87cbXNxgVX-CjlX_d8Jyn4qYHhpud7R2UZHiDAOvbCJ7ucZzxqx-Dd4SzTirNugyzjOlAzNNVUUBnLsdQXRNk6oAdjyi0wZGtcD_Qd7fQkSwEvmphmDnEWJWpsVP6Fi1y6rIAluU8jn4C5pyXbs5YH9mA.Jmv02-Eyv-_iGgH7XSgxcg3Jj9E1dHRRPSx0lIPCaYg&dib_tag=se&keywords=lithium+battery+pack+18650&qid=1755726874&sprefix=lithium+battery+pack+18650%2Caps%2C228&sr=8-2-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1)**
+- **[3.7V 18650 10500mAh 1S3P Li-ion Battery](https://www.amazon.com/CASFROM-Compatible-Raspberry-Expansion-Simplehuman/dp/B0F6YQ5N89/ref=sr_1_3_sspa?crid=1Y3TGZSPH0CLH&dib=eyJ2IjoiMSJ9.2cC4wHjAOveuni3fPLgklI2anq8qZR3mahU_1NZ8Wfkr_xLWDXc3jyd4yNKjtAzIJgP6rkHCaVlKyeBhPLEavPd6ATVfCvVypiUZy9Fz5wVC7qCxgWrsOkE4iVT9EJH9b3zQEnJbewSdcbDe1_evJixsyR-V9SwzzXcvsmppd3Qv9EkH1Da1TYBWlWirT4vLtMP1MdHqve-rQfHhaF4oaLit2LzsnA4UtkWgzXZwiHsscuDUr50korjJxhCqK0t619teYui8PROMIDfy_CPHgxaTLrPr0RB3jxQCIlf-bRw.tuKJZKJZRW2r4_WaC515kUx-KhOzimWtvhVpHQ-kamo&dib_tag=se&keywords=lithium+battery+pack+18650&qid=1755907422&sprefix=lithium+battery+pack+18650%2Caps%2C228&sr=8-3-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1)**
+
 
 ---
+
+## Existing infrastructure
+- **[Solar Meshtastic Node](https://es.aliexpress.com/item/32908615100.html?spm=a2g0o.order_list.order_list_main.5.281f1802KYNsAG&gatewayAdapt=glo2esp)**
+
 
 ## Wiring Notes
 
