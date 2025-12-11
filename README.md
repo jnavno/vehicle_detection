@@ -42,7 +42,7 @@ Building with a modular C++ structure using PlatformIO.
 - **[esp32-s3-mini](https://core-electronics.com.au/esp32-s3-mini-development-board-retired.html)**
 
 ### Transreceiver (allows for long cable connectivity. Get powered by their nearest MCU's 3V3 regulators, respectively):
-- **[RS485-TTL](https://core-electronics.com.au/ttl-uart-to-rs485-converter-module.html)**
+- **[RS485-TTL](https://core-electronics.com.au/2-channel-rs485-module-raspberry-pi-pico-sp3485-uart.html)**
 
 ### Weatherproof Connector. Insulates the ethernet cable into the box:
 - **[Cable glands](https://core-electronics.com.au/waterproof-cable-gland-pg-7-size-black.html)**
@@ -59,25 +59,25 @@ Building with a modular C++ structure using PlatformIO.
 
 Remote Sensor Node
 ------------------
-         [Sensor]
-              ↓  SPI
-       MCU (ESP32-S3 Mini)
-              ↓ UART
-        [RS-485 Driver]
-              ↓
-      Long-Distance Link
-          ETHERNET cable
-      ------------------
+    [Sensor]
+       ↓  SPI
+    MCU (ESP32-S3 Mini)
+       ↓ UART (via jumper cable)
+    [RS-485 Driver]
+       ↓
+    Long-Distance Link
+      ETHERNET cable
+    ------------------
     Twisted Pair (A/B, up to tens of meters)
 
 Base/Mesh Node
 --------------
-      [RS-485 Receiver]
-          ↓ UART
-    XIAO ESP32-S3 (Meshtastic)
-          ↓
+    [RS-485 Receiver]
+       ↓ UART (via jumper cable)
+    XIAO ESP32-S3 (Meshtastic Node)
+       ↓
     Serial Module (TEXTMSG)
-          ↓
+       ↓
     Mesh Network Output
 
 ---
