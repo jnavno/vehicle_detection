@@ -3,11 +3,13 @@
 #include <Wire.h>
 #include <Adafruit_MLX90393.h>
 #include "config.h"
+#include <Adafruit_NeoPixel.h>
 
 // =====================================================
 // 1) SENSOR WRAPPER (MLX90393)
 // =====================================================
 
+Adafruit_NeoPixel pixel(1, 21, NEO_GRB + NEO_KHZ800);
 Adafruit_MLX90393 mag;
 bool sensorConfigured = false;
 
@@ -67,11 +69,14 @@ struct DetectorState {
 
 class VehicleDetector {
 public:
-  VehicleDetector()
-  : startMs_(millis())
-  {}
+  VehicleDetector() = default;
 
   DetectEvent update(float mag_uT, uint32_t now_ms) {
+    if (!started_) {
+      startMs_ = now_ms;
+      started_ = true;
+    }
+
     // --- 1) Calibration phase ---
     if (!calDone_ || isnan(state_.baseline_uT)) {
       if ((now_ms - startMs_) < CAL_TIME_MS) {
@@ -85,10 +90,7 @@ public:
         state_.noiseStd_uT = (calCount_ > 1)
           ? sqrtf(calM2_ / (calCount_ - 1))
           : 0.5f;
-        state_.dynThresh_uT = fmaxf(
-          ABS_THRESHOLD_UT,
-          K_SIGMA * state_.noiseStd_uT
-        );
+        state_.dynThresh_uT = fmaxf(ABS_THRESHOLD_UT, K_SIGMA * state_.noiseStd_uT);
         calDone_ = true;
         return DetectEvent::CalDone;
       }
@@ -112,6 +114,7 @@ public:
       if (delta_uT >= highThresh) {
         if (++highCount_ >= N_CONSEC_HIGH) {
           state_.eventActive = true;
+          eventStartMs_ = now_ms;
           highCount_ = 0;
           lowCount_  = 0;
           return DetectEvent::VehicleDetected;  // ALARM
@@ -120,7 +123,14 @@ public:
         highCount_ = 0;
       }
     } else {
-      // in an active event: wait for enough “low” samples to clear
+      // in an active event: enforce a minimum hold time before allowing CLEAR
+      if ((now_ms - eventStartMs_) < EVENT_HOLD_MS) {
+        // Still holding: ignore clear attempts
+        lowCount_ = 0;
+        return DetectEvent::None;
+      }
+
+      // After hold: wait for enough “low” samples to clear
       if (delta_uT <= lowThresh) {
         if (++lowCount_ >= N_CONSEC_LOW) {
           state_.eventActive = false;
@@ -132,6 +142,7 @@ public:
         lowCount_ = 0;
       }
     }
+
 
     return DetectEvent::None;
   }
@@ -154,29 +165,31 @@ private:
   uint32_t calCount_ = 0;
   float    calMean_  = 0.0f;
   float    calM2_    = 0.0f;
-
+  bool started_ = false;
   uint32_t startMs_  = 0;
   bool     calDone_  = false;
 
   uint8_t  highCount_ = 0;
   uint8_t  lowCount_  = 0;
 
+  uint32_t eventStartMs_ = 0;
+
   DetectorState state_;
 };
 
 // =====================================================
-// 3) FORWARDER (USB debug + RS485 text messages)
+// 3) FORWARDER (USB debug + TTL text messages)
 // =====================================================
 
 namespace Forward {
 
 void begin() {
   Serial.begin(115200);
-  // Wait for USB Serial when tethered (can be removed later)
-  while (!Serial) { delay(10); }
+uint32_t t0 = millis();
+while (!Serial && (millis() - t0 < 1500)) { delay(10); }
 
-#if ENABLE_RS485_UART
-  Serial1.begin(RS485_BAUD, SERIAL_8N1, RS485_RX_PIN, RS485_TX_PIN);
+#if ENABLE_LINK_UART
+  Serial1.begin(LINK_BAUD, SERIAL_8N1, LINK_RX_PIN, LINK_TX_PIN);
 #endif
 
   Serial.println(F("\nVehicle Detector + RS485 forwarder"));
@@ -193,47 +206,63 @@ void sendEvent(DetectEvent ev,
                float delta_uT,
                const DetectorState &st,
                uint32_t t_ms) {
-  String line;
+
+  // 1) Full detail line for USB (bench/logging)
+  String usbLine;
+
+  // 2) Short line for Mesh (Serial Module TEXTMSG)
+  String meshLine;
 
   switch (ev) {
     case DetectEvent::VehicleDetected:
-      line = String("veh:1,ALARM")
-           + ",mag="       + String(mag_uT, 3)
-           + ",delta="     + String(delta_uT, 3)
-           + ",baseline="  + String(st.baseline_uT, 3)
-           + ",thresh="    + String(st.dynThresh_uT, 3)
-           + ",t_ms="      + String(t_ms);
+      usbLine = String("veh:1,ALARM")
+              + ",mag="       + String(mag_uT, 3)
+              + ",delta="     + String(delta_uT, 3)
+              + ",baseline="  + String(st.baseline_uT, 3)
+              + ",thresh="    + String(st.dynThresh_uT, 3)
+              + ",t_ms="      + String(t_ms);
+
+      // Short mesh message
+      meshLine = String("VEH ALARM d=") + String(delta_uT, 1);
       break;
 
     case DetectEvent::EventCleared:
-      line = String("veh:0,NO_ALARM")
-           + ",mag="       + String(mag_uT, 3)
-           + ",delta="     + String(delta_uT, 3)
-           + ",baseline="  + String(st.baseline_uT, 3)
-           + ",thresh="    + String(st.dynThresh_uT, 3)
-           + ",t_ms="      + String(t_ms);
+      usbLine = String("veh:0,NO_ALARM")
+              + ",mag="       + String(mag_uT, 3)
+              + ",delta="     + String(delta_uT, 3)
+              + ",baseline="  + String(st.baseline_uT, 3)
+              + ",thresh="    + String(st.dynThresh_uT, 3)
+              + ",t_ms="      + String(t_ms);
+
+      // Short mesh message
+      meshLine = "VEH CLEAR";
       break;
 
     case DetectEvent::CalDone:
-      line = String("veh:cal")
-           + ",baseline="  + String(st.baseline_uT, 3)
-           + ",noise="     + String(st.noiseStd_uT, 3)
-           + ",thresh="    + String(st.dynThresh_uT, 3);
+      usbLine = String("veh:cal")
+              + ",baseline="  + String(st.baseline_uT, 3)
+              + ",noise="     + String(st.noiseStd_uT, 3)
+              + ",thresh="    + String(st.dynThresh_uT, 3);
+
+      // Sending a short cal message
+      meshLine = "VEH CAL OK";
       break;
 
     default:
-      // We don't send “Calibrating” or “None” over RS485 for now.
       return;
   }
 
-  // Always echo to USB:
-  Serial.println(line);
+  // Always echo full detail to USB:
+  Serial.println(usbLine);
 
-  // Also send over RS485 to Meshtastic node:
-#if ENABLE_RS485_UART
-  Serial1.println(line);
+  // Send short line over RS485 to Meshtastic node:
+#if ENABLE_LINK_UART
+  if (meshLine.length() > 0) {
+    Serial1.println(meshLine);
+  }
 #endif
 }
+
 
 } // namespace Forward
 
@@ -245,19 +274,40 @@ VehicleDetector detector;
 static uint32_t lastBenchMs = 0;
 
 void setup() {
-  Forward::begin();
+  pixel.begin();
+  pixel.setBrightness(30);
+  pixel.setPixelColor(0, pixel.Color(0, 0, 0));
+  pixel.show();
 
-  Serial.println(F("Init magnetometer..."));
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  digitalWrite(STATUS_LED_PIN, LOW);
+
+  Forward::begin();
+  Serial.println(F("BOOT: sketch started"));
+  Serial.println(F("BOOT: entering sensorBegin()..."));
+
   if (!sensorBegin()) {
-    Serial.println(F("ERROR: MLX90393 not found (check wiring, address, power)."));
+    Serial.println(F("ERROR: MLX90393 not found (check wiring, pins, power)."));
+    // Blink fast forever so you can see it without Serial
     while (true) {
-      delay(500);
+      digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+      delay(150);
     }
   }
+
   Serial.println(F("Sensor OK. Calibrating..."));
 }
 
 void loop() {
+  static uint32_t last = 0;
+static bool on = false;
+if (millis() - last > 500) {
+  last = millis();
+  on = !on;
+  pixel.setPixelColor(0, on ? pixel.Color(0, 0, 40) : pixel.Color(0, 0, 0)); // blue blink
+  pixel.show();
+}
+
   float mag;
   if (!readMagnitude(mag)) {
     Serial.println(F("Sensor read fail"));
