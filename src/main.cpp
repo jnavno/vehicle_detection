@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_MLX90393.h>
 #include <Adafruit_NeoPixel.h>
+#include <math.h>
 
 #include "config.h"
 #include "vehicle_detector.h"
@@ -100,10 +101,19 @@ void setup() {
   }
 
   Serial.println(F("Sensor OK. Calibrating..."));
+#if !TUNING_MODE_CSV
+  if (!isnan(delta_uT) && (now - lastBenchMs > DEBUG_BENCH_PERIOD_MS)) {
+    Forward::sendDebug(detector.bench(mag_uT, delta_uT));
+    lastBenchMs = now;
+  }
+#endif
+
+
 }
 
 void loop() {
   heartbeat();
+  Forward::sendTestPingIfDue();
 
   float mag_uT;
   if (!readMagnitude(mag_uT)) {
@@ -117,6 +127,24 @@ void loop() {
   const auto& st = detector.state();
 
   float delta_uT = (isnan(st.baseline_uT)) ? NAN : fabsf(mag_uT - st.baseline_uT);
+  #if TUNING_MODE_CSV
+  static uint32_t lastCsv = 0;
+  if (now - lastCsv >= CSV_PERIOD_MS && !isnan(delta_uT)) {
+    lastCsv = now;
+
+    Serial.print(now);
+    Serial.print(',');
+    Serial.print(mag_uT, 3);
+    Serial.print(',');
+    Serial.print(delta_uT, 3);
+    Serial.print(',');
+    Serial.print(st.baseline_uT, 3);
+    Serial.print(',');
+    Serial.print(st.dynThresh_uT, 3);
+    Serial.print(',');
+    Serial.println(st.eventActive ? 1 : 0);
+  }
+#endif
 
   // Send events (USB detailed + mesh short)
   if (ev == DetectEvent::VehicleDetected ||

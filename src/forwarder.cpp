@@ -27,10 +27,10 @@ void sendEvent(DetectEvent ev,
                const DetectorState& st,
                uint32_t t_ms) {
 
-  // 1) Full detail line for USB
+  // 1) Full detail line for USB logs
   String usbLine;
 
-  // 2) Short line for Mesh (Serial Module TEXTMSG)
+  // 2) Short line for the Meshtastic serial input (Serial Module TEXTMSG)
   String meshLine;
 
   switch (ev) {
@@ -69,15 +69,39 @@ void sendEvent(DetectEvent ev,
       return;
   }
 
-  // Always echo full detail to USB
+  // echoing full detail to USB
   Serial.println(usbLine);
 
-  // Send short line over UART->RS485 to Meshtastic node
+  // Sending short line over UART->RS485 to Meshtastic node
 #if ENABLE_LINK_UART
   if (meshLine.length() > 0) {
     Serial1.println(meshLine);
   }
 #endif
 }
+
+void sendMeshText(const String& msg) {
+#if ENABLE_LINK_UART
+  if (msg.length() > 0) {
+    Serial1.println(msg);
+  }
+#endif
+  // also echo to USB so you can see exactly what was sent
+  Serial.print(F("[MESH] "));
+  Serial.println(msg);
+}
+
+void sendTestPingIfDue() {
+#if ENABLE_TEST_PING
+  static uint32_t lastPing = 0;
+  uint32_t now = millis();
+  if (now - lastPing >= TEST_PING_PERIOD_MS) {
+    lastPing = now;
+    sendMeshText("TG TEST OK");
+  }
+#endif
+}
+
+
 
 } // namespace Forward

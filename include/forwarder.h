@@ -16,4 +16,8 @@ void sendEvent(DetectEvent ev,
                const DetectorState& st,
                uint32_t t_ms);
 
+void sendMeshText(const String& msg);
+
+void sendTestPingIfDue();
+
 } // namespace Forward
