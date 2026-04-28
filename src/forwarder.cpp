@@ -3,22 +3,81 @@
 
 namespace Forward {
 
+static uint32_t lastPingMs = 0;
+
 void begin() {
   Serial.begin(115200);
 
-  // Don’t hang forever if running untethered
   uint32_t t0 = millis();
-  while (!Serial && (millis() - t0 < 1500)) { delay(10); }
+  while (!Serial && (millis() - t0 < 1500)) {
+    delay(10);
+  }
 
 #if ENABLE_LINK_UART
   Serial1.begin(LINK_BAUD, SERIAL_8N1, LINK_RX_PIN, LINK_TX_PIN);
 #endif
 
-  Serial.println(F("\nVehicle Detector + RS485 forwarder"));
+  Serial.println();
+  Serial.println(F("Vehicle Detector - UART TEXTMSG mode for RAK Meshtastic"));
+  Serial.printf("USB baud: 115200\n");
+
+#if ENABLE_LINK_UART
+  Serial.printf("UART baud: %lu\n", (unsigned long)LINK_BAUD);
+  Serial.printf("Waveshare TX GPIO%d -> RAK RXD1 / pin 15\n", LINK_TX_PIN);
+  Serial.printf("Waveshare RX GPIO%d <- RAK TXD1 / pin 16 optional\n", LINK_RX_PIN);
+  Serial.println(F("UART message format: ASCII + CRLF"));
+#else
+  Serial.println(F("UART disabled."));
+#endif
+
+  Serial.println();
+
+  // Early boot message proves UART path independent of sensor init.
+  sendMeshText("BOOT_RAK");
+}
+
+void poll() {
+#if ENABLE_LINK_UART && LINK_DEBUG_RX_ECHO
+  while (Serial1.available() > 0) {
+    int c = Serial1.read();
+
+    Serial.print(F("[LINK-IN] 0x"));
+    if (c < 16) Serial.print('0');
+    Serial.print(c, HEX);
+    Serial.print(F(" '"));
+
+    if (c >= 32 && c <= 126) {
+      Serial.print((char)c);
+    } else if (c == '\n') {
+      Serial.print(F("\\n"));
+    } else if (c == '\r') {
+      Serial.print(F("\\r"));
+    } else {
+      Serial.print('.');
+    }
+
+    Serial.println('\'');
+  }
+#endif
 }
 
 void sendDebug(const String& line) {
   Serial.println(line);
+}
+
+void sendMeshText(const String& msg) {
+#if ENABLE_LINK_UART
+  if (msg.length() == 0) return;
+
+  // Meshtastic Serial Module TEXTMSG: send simple ASCII line.
+  // CRLF is the most conservative framing; timeout=1000 also finalizes packet.
+  Serial1.print(msg);
+  Serial1.print("\r\n");
+  Serial1.flush();
+#endif
+
+  Serial.print(F("[MESH-OUT] "));
+  Serial.println(msg);
 }
 
 void sendEvent(DetectEvent ev,
@@ -26,11 +85,7 @@ void sendEvent(DetectEvent ev,
                float delta_uT,
                const DetectorState& st,
                uint32_t t_ms) {
-
-  // 1) Full detail line for USB logs
   String usbLine;
-
-  // 2) Short line for the Meshtastic serial input (Serial Module TEXTMSG)
   String meshLine;
 
   switch (ev) {
@@ -42,18 +97,18 @@ void sendEvent(DetectEvent ev,
               + ",thresh="    + String(st.dynThresh_uT, 3)
               + ",t_ms="      + String(t_ms);
 
-      meshLine = String("VEH ALARM d=") + String(delta_uT, 1);
+      meshLine = "VEH_ALARM";
       break;
 
     case DetectEvent::EventCleared:
-      usbLine = String("veh:0,NO_ALARM")
+      usbLine = String("veh:0,CLEAR")
               + ",mag="       + String(mag_uT, 3)
               + ",delta="     + String(delta_uT, 3)
               + ",baseline="  + String(st.baseline_uT, 3)
               + ",thresh="    + String(st.dynThresh_uT, 3)
               + ",t_ms="      + String(t_ms);
 
-      meshLine = "VEH CLEAR";
+      meshLine = "VEH_CLEAR";
       break;
 
     case DetectEvent::CalDone:
@@ -62,46 +117,28 @@ void sendEvent(DetectEvent ev,
               + ",noise="     + String(st.noiseStd_uT, 3)
               + ",thresh="    + String(st.dynThresh_uT, 3);
 
-      meshLine = "VEH CAL OK";
+      meshLine = "VEH_READY";
       break;
 
     default:
       return;
   }
 
-  // echoing full detail to USB
   Serial.println(usbLine);
-
-  // Sending short line over UART->RS485 to Meshtastic node
-#if ENABLE_LINK_UART
-  if (meshLine.length() > 0) {
-    Serial1.println(meshLine);
-  }
-#endif
-}
-
-void sendMeshText(const String& msg) {
-#if ENABLE_LINK_UART
-  if (msg.length() > 0) {
-    Serial1.println(msg);
-  }
-#endif
-  // also echo to USB so you can see exactly what was sent
-  Serial.print(F("[MESH] "));
-  Serial.println(msg);
+  sendMeshText(meshLine);
 }
 
 void sendTestPingIfDue() {
-#if ENABLE_TEST_PING
-  static uint32_t lastPing = 0;
+#if ENABLE_TEST_PING && ENABLE_LINK_UART
   uint32_t now = millis();
-  if (now - lastPing >= TEST_PING_PERIOD_MS) {
-    lastPing = now;
-    sendMeshText("TG TEST OK");
+
+  if (lastPingMs == 0 || now - lastPingMs >= TEST_PING_PERIOD_MS) {
+    lastPingMs = now;
+
+    // Unique enough to identify in logs, short enough for reliable serial bring-up.
+    sendMeshText("HB_RAK");
   }
 #endif
 }
-
-
 
 } // namespace Forward

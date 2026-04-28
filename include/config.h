@@ -1,152 +1,94 @@
-// config.h
 #pragma once
 #include <Arduino.h>
 
 /*
 ==========================================================
   PROJECT: Waveshare ESP32-S3 + MLX90393 Vehicle Detector
+  OUTPUT MODE: UART TEXTMSG into RAK4630/RAK4631 Meshtastic
 ==========================================================
 
-HOW TO USE THIS FILE TO TUNE THE DETECTOR:
-- To tune detection behavior, we'll ONLY edit the section:
-      "TUNING ONLY (SAFE TO EDIT)"
-- Do NOT change pins/serial/I2C unless wiring changed.
-- If something stops working after edits, revert this file first.
-- Best to tune in small steps and test 1 change at a time.
+Wiring:
+  Waveshare GPIO9 TX  -> RAK RXD1 / pin 15
+  Waveshare GPIO8 RX  <- RAK TXD1 / pin 16   optional
+  Waveshare GND       -> RAK GND
 
+RAK Meshtastic Serial Module:
+  Enabled: ON
+  Mode: TEXTMSG
+  RXD: 15
+  TXD: 16
+  Baud: BAUD_38400
+  Timeout: 1000
+  Echo: OFF
+  Override console serial port: OFF
+  GPS mode: NOT_PRESENT / disabled
+
+Message format:
+  ASCII text + CRLF
 */
 
-
 // ========================================================
-//  WIRING / BOARD SETTINGS
+//  BOARD / SENSOR SETTINGS
 // ========================================================
 
-// ---- I2C for MLX90393 magnetometer ----
-// These must match the physical wiring.
 #define MAG_I2C_SDA_PIN   1
 #define MAG_I2C_SCL_PIN   2
 
-// ---- NeoPixel (Waveshare ESP32-S3 Zero onboard LED) ----
-// On this board, the onboard RGB LED is a WS2812 on GPIO21.
-// We use it for debugging/heartbeat only at this stage.
-// No need to change unless using an external LED.
 #define NEOPIXEL_PIN      21
 #define NEOPIXEL_COUNT    1
 
-// ---- UART LINK to RS-485 transceiver (TTL side) ----
-// ESP32 TX -> Transceiver RXD
-// ESP32 RX <- Transceiver TXD
-#define ENABLE_LINK_UART  1
-#define LINK_BAUD         115200
-#define LINK_TX_PIN       9 //into 34 RX meshtastic heltec v3
-#define LINK_RX_PIN       8 //into 33 TX meshtastic heltec v3
+// ========================================================
+//  UART LINK TO RAK MESHTASTIC NODE
+// ========================================================
 
-// Optional extra simple GPIO LED (only if using an external LED).
-// If no discrete LED, leave this commented out.
-// #define STATUS_LED_PIN  10
+#define ENABLE_LINK_UART        1
+#define LINK_BAUD               38400
 
+// Waveshare side pins
+#define LINK_TX_PIN             9
+#define LINK_RX_PIN             8
 
+// Echo any bytes received from RAK TX back to Waveshare USB log.
+// Useful only if you wire RAK TXD1/pin16 -> Waveshare GPIO8.
+#define LINK_DEBUG_RX_ECHO      1
+
+// Send periodic UART heartbeat.
+#define ENABLE_TEST_PING        1
+#define TEST_PING_PERIOD_MS     10000
 
 // ========================================================
-//  TUNING ONLY (SAFE TO EDIT)
+//  DISABLE DETECTION GPIO OUTPUT
 // ========================================================
-/*
----------------------------
-  What will changing these values do
----------------------------
 
-This detector works like this:
-1) CALIBRATION: for CAL_TIME_MS, we measure "quiet" magnetic field |B|
-   and compute a baseline + noise level.
-2) DETECTION: we compute delta = abs(|B| - baseline)
-   If delta stays high long enough, we trigger ALARM.
-   If delta stays low long enough (after a hold time), we CLEAR.
+#define ENABLE_DETECT_GPIO_OUT  0
+#define DETECT_OUT_PIN          9
+#define DETECT_OUT_ACTIVE_HIGH  1
 
-With this, we can tune:
-- How sensitive it is (thresholds)
-- How long it must stay high/low (durations)
-- How fast baseline is allowed to drift (baseline tracking)
+// ========================================================
+//  DETECTOR TUNING
+// ========================================================
 
-Let's start with small changes.
-*/
-
-
-// -------------------- Sampling --------------------
-// How often we read the sensor.
-// 20ms = 50 Hz. If we go faster, noise may increase.
 #define SAMPLE_PERIOD_MS        20
-
-
-// -------------------- Calibration --------------------
-// Calibration requires a "quiet" period at boot.
-// Increase if your environment is noisy at startup.
 #define CAL_TIME_MS             10000
 
-
-// -----PRIORITY----- Sensitivity thresholds --------------------
-// Absolute minimum delta in microtesla (uT) to consider "something changed"
-// Raise to reduce false positives.
 #define ABS_THRESHOLD_UT        4.0f
-
-// Dynamic threshold = max(ABS_THRESHOLD_UT, K_SIGMA * noiseStd)
-// Raise K_SIGMA to reduce false positives.
-// Lower K_SIGMA to increase sensitivity.
 #define K_SIGMA                 8.0f
 
+// Lowered for bring-up. Increase later if too sensitive.
+#define N_CONSEC_HIGH           3
+#define N_CONSEC_LOW            10
 
-// ------PRIORITY----- Trigger / Clear timing --------------------
-// How many consecutive "high delta" samples before ALARM.
-// At 50 Hz: 5 samples = 0.10s, 20 samples = 0.40s.
-#define N_CONSEC_HIGH           25
-
-// How many consecutive "low delta" samples before CLEAR (after hold time).
-// At 50 Hz: 20 samples = 0.40s, 50 samples = 1.00s.
-#define N_CONSEC_LOW            75
-
-// ----PRIORITY----- Anti-spam hold time --------------------
-// After ALARM triggers, we hold the event for this minimum time.
-// Prevents ALARM/CLEAR chatter with slow-moving vehicles.
 #define EVENT_HOLD_MS           5000
-
-// -------------------- Hysteresis --------------------
-// CLEAR threshold is lower than ALARM threshold:
-// lowThresh = highThresh * HYSTERESIS_FRACTION
-// Smaller fraction = harder to clear (more stable, less chatter).
 #define HYSTERESIS_FRACTION     0.35f
-
-
-// -------------------- Baseline tracking --------------------
-// Baseline slowly adapts when no event is active.
-// Smaller alpha = baseline changes slower (more stable but less adaptive).
-// Larger alpha = baseline adapts faster (can help long-term drift, but risks
-// eating real events if too large).
 #define BASELINE_ALPHA          0.0006f
 
+// ========================================================
+//  USB DEBUG
+// ========================================================
 
-// -------------------- Debug output --------------------
-// How often we print the [BENCH] line over USB serial
 #define DEBUG_BENCH_PERIOD_MS   2000
 
+#define TUNING_MODE_CSV         1
+#define CSV_PERIOD_MS           100
 
-// ---------- Field test features ----------
-#define ENABLE_TEST_PING       1
-#define TEST_PING_PERIOD_MS    30000  // 30s
-
-// CSV logging over USB (NOT over mesh)
-#define TUNING_MODE_CSV        1
-#define CSV_PERIOD_MS          100     // 10 Hz CSV so it’s readable
-
-
-
-// ========================================================
-//  ADVANCED TUNING (OPTIONAL, ONLY AFTER BASIC WORKS)
-// ========================================================
-/*
-If we later want "levels" (METAL vs VEHICLE), we can add something like:
-
-#define VEHICLE_THRESHOLD_UT  10.0f
-
-And in the forwarder, send:
-- "METAL d=..." for small deltas
-- "VEH ALARM d=..." for large deltas
-*/
+#define ENABLE_STATUS_LOGS      1

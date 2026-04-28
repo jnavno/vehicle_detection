@@ -1,15 +1,14 @@
 #pragma once
 #include <Arduino.h>
-#include "vehicle_detector.h"   // DetectEvent, DetectorState
+#include "vehicle_detector.h"
 
 namespace Forward {
 
 void begin();
+void poll();
 
-// Debug only – USB serial
 void sendDebug(const String& line);
 
-// Event -> full USB detail + short mesh line to Serial1 (RS-485 transceiver)
 void sendEvent(DetectEvent ev,
                float mag_uT,
                float delta_uT,
@@ -17,7 +16,6 @@ void sendEvent(DetectEvent ev,
                uint32_t t_ms);
 
 void sendMeshText(const String& msg);
-
 void sendTestPingIfDue();
 
 } // namespace Forward
