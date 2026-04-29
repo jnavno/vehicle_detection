@@ -7,14 +7,15 @@
   OUTPUT MODE: UART TEXTMSG into RAK4630/RAK4631 Meshtastic
 ==========================================================
 
-Wiring:
-  Waveshare GPIO9 TX  -> RAK RXD1 / pin 15
-  Waveshare GPIO8 RX  <- RAK TXD1 / pin 16   optional
-  Waveshare GND       -> RAK GND
+Validated:
+  Waveshare GPIO9 TX -> USB-TTL RX receives:
+    HB_RAK
+    VEH_ALARM
+    VEH_CLEAR
 
-Current validation:
-  Waveshare GPIO9 TX -> USB-TTL RX works.
-  TTL receives HB_RAK at 38400 baud.
+Next:
+  Waveshare GPIO9 TX -> RAK RXD1 / pin 15
+  Waveshare GND      -> RAK GND
 */
 
 // ========================================================
@@ -51,53 +52,72 @@ Current validation:
 #define DETECT_OUT_ACTIVE_HIGH  1
 
 // ========================================================
-//  DETECTOR TUNING - BASIC VALIDATION MODE
+//  DETECTOR TUNING - DESKTOP VALIDATION MODE
 // ========================================================
 
 // Sampling
 #define SAMPLE_PERIOD_MS        20
 
-// Calibration
-// Keep the sensor quiet during this time.
-// If calibration includes a vehicle/magnet movement, noise estimate will be bad.
+// Keep sensor quiet during calibration.
+// Do not pass metal over the sensor until VEH_READY.
 #define CAL_TIME_MS             8000
 
-// Absolute minimum threshold.
-#define ABS_THRESHOLD_UT        4.0f
+// Detection is now based on 3-axis vector delta:
+// delta = sqrt((x-baselineX)^2 + (y-baselineY)^2 + (z-baselineZ)^2)
 
-// Dynamic threshold = K_SIGMA * noise.
-// Lowered from 8 to 5 for validation.
+// Minimum threshold in uT.
+#define ABS_THRESHOLD_UT        3.0f
+
+// Dynamic threshold = K_SIGMA * calibration noise.
 #define K_SIGMA                 5.0f
 
-// Hard cap so a noisy calibration cannot make detection impossible.
-// Your bad run had dynThresh around 91 uT. This cap prevents that.
+// Clamp threshold so bad calibration cannot make detection blind.
 #define MAX_DYNAMIC_THRESHOLD_UT 8.0f
 
-// If calibration noise is insane, clamp it before computing threshold.
+// Clamp calibration noise.
 #define MAX_CAL_NOISE_STD_UT    2.0f
+#define MIN_CAL_NOISE_STD_UT    0.20f
 
-// If calibration somehow produces near-zero noise, use this floor.
-#define MIN_CAL_NOISE_STD_UT    0.25f
-
-// Trigger / clear timing
-// Lower values for bench validation.
-#define N_CONSEC_HIGH           3
+// Fast desktop validation.
+// Increase later for field deployment if needed.
+#define N_CONSEC_HIGH           2
 #define N_CONSEC_LOW            8
 
-#define EVENT_HOLD_MS           3000
-#define HYSTERESIS_FRACTION     0.40f
+// Minimum time an event remains active before clear is allowed.
+#define EVENT_HOLD_MS           1500
 
-// Baseline tracking
-// Slow enough not to eat events quickly.
+// Desktop safety: if an event stays active too long, force clear and rebaseline.
+// This prevents the detector from getting stuck after a bad calibration or metal left nearby.
+// For deployment, consider setting this to 0.
+#define EVENT_STUCK_REBASE_MS   15000
+
+// CLEAR threshold = high threshold * this fraction.
+#define HYSTERESIS_FRACTION     0.70f
+
+// Baseline tracking when no event is active.
 #define BASELINE_ALPHA          0.0005f
 
 // ========================================================
-//  USB DEBUG
+//  USB DEBUG / LOGGING CONTROLS
 // ========================================================
 
-#define DEBUG_BENCH_PERIOD_MS   2000
+// Main debug switch.
+// 1 = verbose desktop/bench logs.
+// 0 = quiet field mode.
+#define ENABLE_USB_DEBUG        1
 
+// CSV stream over USB.
+// Useful for tuning, noisy for deployment.
 #define TUNING_MODE_CSV         1
 #define CSV_PERIOD_MS           100
 
+// Periodic [BENCH] lines over USB.
+#define ENABLE_BENCH_LOGS       1
+#define DEBUG_BENCH_PERIOD_MS   2000
+
+// Boot/config/status logs over USB.
 #define ENABLE_STATUS_LOGS      1
+
+// Echo incoming bytes from RAK TX to Waveshare USB.
+// Only useful if RAK TXD1 pin16 -> Waveshare GPIO8 is wired.
+#define LINK_DEBUG_RX_ECHO      0

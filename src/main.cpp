@@ -41,12 +41,8 @@ static bool readXYZ(float& x, float& y, float& z) {
   return mag.readData(&x, &y, &z);
 }
 
-static bool readMagnitude(float& mag_uT) {
-  float x, y, z;
-  if (!readXYZ(x, y, z)) return false;
-
-  mag_uT = sqrtf(x * x + y * y + z * z);
-  return true;
+static float magnitude(float x, float y, float z) {
+  return sqrtf(x * x + y * y + z * z);
 }
 
 // =====================================================
@@ -65,18 +61,13 @@ static void setDetectOutput(bool active, const char* reason) {
   digitalWrite(DETECT_OUT_PIN, active ? LOW : HIGH);
 #endif
 
-#if ENABLE_STATUS_LOGS
-  Serial.printf("[DETECT-OUT] %s reason=%s pin=%d level=%s\n",
+#if ENABLE_USB_DEBUG && ENABLE_STATUS_LOGS
+  Serial.printf("[DETECT-OUT] %s reason=%s pin=%d\n",
                 active ? "ACTIVE" : "CLEAR",
                 reason,
-                DETECT_OUT_PIN,
-#if DETECT_OUT_ACTIVE_HIGH
-                active ? "HIGH" : "LOW"
-#else
-                active ? "LOW" : "HIGH"
+                DETECT_OUT_PIN);
 #endif
-  );
-#endif
+
 #else
   (void)active;
   (void)reason;
@@ -137,14 +128,19 @@ void setup() {
 
   Forward::begin();
 
+#if ENABLE_USB_DEBUG && ENABLE_STATUS_LOGS
   Serial.println(F("BOOT: sketch started"));
   Serial.println(F("BOOT: UART TEXTMSG mode to RAK"));
+  Serial.println(F("BOOT: vector delta detection enabled"));
   Serial.println(F("BOOT: entering sensorBegin()..."));
+#endif
 
   if (!sensorBegin()) {
+#if ENABLE_USB_DEBUG && ENABLE_STATUS_LOGS
     Serial.println(F("ERROR: MLX90393 not found"));
-    Forward::sendMeshText("MAG_INIT_FAIL");
+#endif
 
+    Forward::sendMeshText("MAG_INIT_FAIL");
     setDetectOutput(false, "sensor_init_fail");
 
     while (true) {
@@ -153,7 +149,10 @@ void setup() {
     }
   }
 
+#if ENABLE_USB_DEBUG && ENABLE_STATUS_LOGS
   Serial.println(F("Sensor OK. Calibrating..."));
+#endif
+
   Forward::sendMeshText("CAL");
 }
 
@@ -162,9 +161,11 @@ void loop() {
   Forward::poll();
   Forward::sendTestPingIfDue();
 
-  float mag_uT = NAN;
+  float x = NAN;
+  float y = NAN;
+  float z = NAN;
 
-  if (!readMagnitude(mag_uT)) {
+  if (!readXYZ(x, y, z)) {
     static uint32_t lastReadFail = 0;
     uint32_t nowFail = millis();
 
@@ -179,13 +180,15 @@ void loop() {
     return;
   }
 
+  float mag_uT = magnitude(x, y, z);
+
   uint32_t now = millis();
-  DetectEvent ev = detector.update(mag_uT, now);
+  DetectEvent ev = detector.update(x, y, z, now);
   const auto& st = detector.state();
 
-  float delta_uT = isnan(st.baseline_uT) ? NAN : fabsf(mag_uT - st.baseline_uT);
+  float delta_uT = st.delta_uT;
 
-#if TUNING_MODE_CSV
+#if ENABLE_USB_DEBUG && TUNING_MODE_CSV
   static uint32_t lastCsv = 0;
 
   if (now - lastCsv >= CSV_PERIOD_MS && !isnan(delta_uT)) {
@@ -219,10 +222,12 @@ void loop() {
     Forward::sendEvent(ev, mag_uT, delta_uT, st, now);
   }
 
+#if ENABLE_USB_DEBUG && ENABLE_BENCH_LOGS
   if (!isnan(delta_uT) && (now - lastBenchMs > DEBUG_BENCH_PERIOD_MS)) {
     Forward::sendDebug(detector.bench(mag_uT, delta_uT));
     lastBenchMs = now;
   }
+#endif
 
   delay(SAMPLE_PERIOD_MS);
 }

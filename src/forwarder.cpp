@@ -17,6 +17,7 @@ void begin() {
   Serial1.begin(LINK_BAUD, SERIAL_8N1, LINK_RX_PIN, LINK_TX_PIN);
 #endif
 
+#if ENABLE_USB_DEBUG && ENABLE_STATUS_LOGS
   Serial.println();
   Serial.println(F("Vehicle Detector - UART TEXTMSG mode for RAK Meshtastic"));
   Serial.printf("USB baud: 115200\n");
@@ -31,13 +32,13 @@ void begin() {
 #endif
 
   Serial.println();
+#endif
 
-  // Early boot message proves UART path independent of sensor init.
   sendMeshText("BOOT_RAK");
 }
 
 void poll() {
-#if ENABLE_LINK_UART && LINK_DEBUG_RX_ECHO
+#if ENABLE_LINK_UART && LINK_DEBUG_RX_ECHO && ENABLE_USB_DEBUG
   while (Serial1.available() > 0) {
     int c = Serial1.read();
 
@@ -62,22 +63,28 @@ void poll() {
 }
 
 void sendDebug(const String& line) {
+#if ENABLE_USB_DEBUG
   Serial.println(line);
+#else
+  (void)line;
+#endif
 }
 
 void sendMeshText(const String& msg) {
 #if ENABLE_LINK_UART
   if (msg.length() == 0) return;
 
-  // Meshtastic Serial Module TEXTMSG: send simple ASCII line.
-  // CRLF is the most conservative framing; timeout=1000 also finalizes packet.
   Serial1.print(msg);
   Serial1.print("\r\n");
   Serial1.flush();
 #endif
 
+#if ENABLE_USB_DEBUG
   Serial.print(F("[MESH-OUT] "));
   Serial.println(msg);
+#else
+  (void)msg;
+#endif
 }
 
 void sendEvent(DetectEvent ev,
@@ -124,7 +131,12 @@ void sendEvent(DetectEvent ev,
       return;
   }
 
+#if ENABLE_USB_DEBUG
   Serial.println(usbLine);
+#else
+  (void)usbLine;
+#endif
+
   sendMeshText(meshLine);
 }
 
@@ -134,8 +146,6 @@ void sendTestPingIfDue() {
 
   if (lastPingMs == 0 || now - lastPingMs >= TEST_PING_PERIOD_MS) {
     lastPingMs = now;
-
-    // Unique enough to identify in logs, short enough for reliable serial bring-up.
     sendMeshText("HB_RAK");
   }
 #endif
