@@ -12,19 +12,9 @@ Wiring:
   Waveshare GPIO8 RX  <- RAK TXD1 / pin 16   optional
   Waveshare GND       -> RAK GND
 
-RAK Meshtastic Serial Module:
-  Enabled: ON
-  Mode: TEXTMSG
-  RXD: 15
-  TXD: 16
-  Baud: BAUD_38400
-  Timeout: 1000
-  Echo: OFF
-  Override console serial port: OFF
-  GPS mode: NOT_PRESENT / disabled
-
-Message format:
-  ASCII text + CRLF
+Current validation:
+  Waveshare GPIO9 TX -> USB-TTL RX works.
+  TTL receives HB_RAK at 38400 baud.
 */
 
 // ========================================================
@@ -44,15 +34,11 @@ Message format:
 #define ENABLE_LINK_UART        1
 #define LINK_BAUD               38400
 
-// Waveshare side pins
 #define LINK_TX_PIN             9
 #define LINK_RX_PIN             8
 
-// Echo any bytes received from RAK TX back to Waveshare USB log.
-// Useful only if you wire RAK TXD1/pin16 -> Waveshare GPIO8.
 #define LINK_DEBUG_RX_ECHO      1
 
-// Send periodic UART heartbeat.
 #define ENABLE_TEST_PING        1
 #define TEST_PING_PERIOD_MS     10000
 
@@ -65,22 +51,45 @@ Message format:
 #define DETECT_OUT_ACTIVE_HIGH  1
 
 // ========================================================
-//  DETECTOR TUNING
+//  DETECTOR TUNING - BASIC VALIDATION MODE
 // ========================================================
 
+// Sampling
 #define SAMPLE_PERIOD_MS        20
-#define CAL_TIME_MS             10000
 
+// Calibration
+// Keep the sensor quiet during this time.
+// If calibration includes a vehicle/magnet movement, noise estimate will be bad.
+#define CAL_TIME_MS             8000
+
+// Absolute minimum threshold.
 #define ABS_THRESHOLD_UT        4.0f
-#define K_SIGMA                 8.0f
 
-// Lowered for bring-up. Increase later if too sensitive.
+// Dynamic threshold = K_SIGMA * noise.
+// Lowered from 8 to 5 for validation.
+#define K_SIGMA                 5.0f
+
+// Hard cap so a noisy calibration cannot make detection impossible.
+// Your bad run had dynThresh around 91 uT. This cap prevents that.
+#define MAX_DYNAMIC_THRESHOLD_UT 8.0f
+
+// If calibration noise is insane, clamp it before computing threshold.
+#define MAX_CAL_NOISE_STD_UT    2.0f
+
+// If calibration somehow produces near-zero noise, use this floor.
+#define MIN_CAL_NOISE_STD_UT    0.25f
+
+// Trigger / clear timing
+// Lower values for bench validation.
 #define N_CONSEC_HIGH           3
-#define N_CONSEC_LOW            10
+#define N_CONSEC_LOW            8
 
-#define EVENT_HOLD_MS           5000
-#define HYSTERESIS_FRACTION     0.35f
-#define BASELINE_ALPHA          0.0006f
+#define EVENT_HOLD_MS           3000
+#define HYSTERESIS_FRACTION     0.40f
+
+// Baseline tracking
+// Slow enough not to eat events quickly.
+#define BASELINE_ALPHA          0.0005f
 
 // ========================================================
 //  USB DEBUG
